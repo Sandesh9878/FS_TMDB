@@ -16,59 +16,21 @@ public class TmdbClient : ITmdbClient
 
     public async Task<IReadOnlyList<Movie>> GetTrendingMoviesAsync(CancellationToken cancellationToken)
     {
-        TmdbPagedResponse<TmdbMovie>? response;
-
-        try
-        {
-            response = await _httpClient.GetFromJsonAsync<TmdbPagedResponse<TmdbMovie>>(
-                "trending/movie/week",
-                cancellationToken);
-        }
-        catch (HttpRequestException)
-        {
-            throw new MovieException(
-                MovieException.ExceptionTitle,
-                ErrorType.UpstreamServiceUnavailable,
-                "TMDB did not return trending movies.");
-        }
-
-        if (response is null)
-        {
-            throw new MovieException(
-                MovieException.ExceptionTitle,
-                ErrorType.UpstreamServiceUnavailable,
-                "TMDB returned an empty trending movies response.");
-        }
+        var response = await GetAsync<TmdbPagedResponse<TmdbMovie>>(
+            "trending/movie/week",
+            "trending movies",
+            cancellationToken);
 
         return response.Results.Select(TmdbMovieMapper.ToDomainModel).ToList();
     }
 
     public async Task<PagedResult<Movie>> SearchMoviesAsync(string query, int page, CancellationToken cancellationToken)
     {
-        TmdbPagedResponse<TmdbMovie>? response;
-
-        try
-        {
-            // Escape the query so characters like '&' or '#' can't add or cut off TMDB parameters.
-            response = await _httpClient.GetFromJsonAsync<TmdbPagedResponse<TmdbMovie>>(
-                $"search/movie?query={Uri.EscapeDataString(query)}&page={page}",
-                cancellationToken);
-        }
-        catch (HttpRequestException)
-        {
-            throw new MovieException(
-                MovieException.ExceptionTitle,
-                ErrorType.UpstreamServiceUnavailable,
-                "TMDB did not return search results.");
-        }
-
-        if (response is null)
-        {
-            throw new MovieException(
-                MovieException.ExceptionTitle,
-                ErrorType.UpstreamServiceUnavailable,
-                "TMDB returned an empty search response.");
-        }
+        // Escape the query parameters.
+        var response = await GetAsync<TmdbPagedResponse<TmdbMovie>>(
+            $"search/movie?query={Uri.EscapeDataString(query)}&page={page}",
+            "search results",
+            cancellationToken);
 
         return new PagedResult<Movie>
         {
@@ -77,5 +39,28 @@ public class TmdbClient : ITmdbClient
             TotalResults = response.TotalResults,
             Results = response.Results.Select(TmdbMovieMapper.ToDomainModel).ToList(),
         };
+    }
+
+    private async Task<T> GetAsync<T>(string requestUri, string description, CancellationToken cancellationToken)
+        where T : class
+    {
+        T? response;
+
+        try
+        {
+            response = await _httpClient.GetFromJsonAsync<T>(requestUri, cancellationToken);
+        }
+        catch (HttpRequestException)
+        {
+            throw new MovieException(
+                MovieException.ExceptionTitle,
+                ErrorType.UpstreamServiceUnavailable,
+                $"TMDB did not return {description}.");
+        }
+
+        return response ?? throw new MovieException(
+            MovieException.ExceptionTitle,
+            ErrorType.UpstreamServiceUnavailable,
+            $"TMDB returned an empty {description} response.");
     }
 }

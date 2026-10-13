@@ -22,33 +22,38 @@ public class RequestLoggingMiddleware
         }
         catch (Exception exception)
         {
-            var (statusCode, title, detail, instance) = exception switch
+            var (statusCode, title, detail) = exception switch
             {
                 ProblemDetailsException problemDetailsException => (
                     problemDetailsException.ErrorCode.ToStatusCode(),
                     problemDetailsException.Title,
-                    problemDetailsException.Message,
-                    problemDetailsException.Instance.ToString()),
+                    problemDetailsException.Message),
                 HttpRequestException => (
                     StatusCodes.Status503ServiceUnavailable,
                     "Upstream service unavailable",
-                    exception.Message,
-                    httpContext.Request.Path.ToString()),
+                    exception.Message),
                 _ => (
                     StatusCodes.Status500InternalServerError,
                     "An unexpected error occurred",
-                    exception.Message,
-                    httpContext.Request.Path.ToString()),
+                    exception.Message),
             };
 
-            _logger.LogError(exception, "Request to {Path} failed with status {StatusCode}", httpContext.Request.Path, statusCode);
+            if (statusCode < StatusCodes.Status500InternalServerError)
+            {
+                _logger.LogWarning("Request to {Path} failed with status {StatusCode}: {Detail}", httpContext.Request.Path, statusCode, detail);
+            }
+            else
+            {
+                _logger.LogError(exception, "Request to {Path} failed with status {StatusCode}", httpContext.Request.Path, statusCode);
+            }
 
             var problemDetails = problemDetailsFactory.CreateProblemDetails(
                 httpContext,
                 statusCode,
                 title,
-                instance: instance,
-                detail: detail);
+                type: "about:blank",
+                detail: detail,
+                instance: httpContext.Request.Path);
 
             httpContext.Response.ContentType = "application/problem+json";
             httpContext.Response.StatusCode = statusCode;
