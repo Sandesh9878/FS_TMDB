@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Json;
 using MovieSearchCase.Domain.Entities;
 using MovieSearchCase.Domain.Exceptions;
@@ -50,12 +51,26 @@ public class TmdbClient : ITmdbClient
         {
             response = await _httpClient.GetFromJsonAsync<T>(requestUri, cancellationToken);
         }
+        catch (HttpRequestException exception) when (exception.StatusCode is HttpStatusCode.Unauthorized)
+        {
+            // Our token is wrong, so TMDB isn't down: surface as a 500 and keep the cause in the logs only.
+            throw new InvalidOperationException("TMDB rejected the configured access token.", exception);
+        }
         catch (HttpRequestException)
         {
             throw new MovieException(
                 MovieException.ExceptionTitle,
                 ErrorType.UpstreamServiceUnavailable,
                 $"TMDB did not return {description}.");
+        }
+        catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            // HttpClient.Timeout elapsed. If the caller's token fired instead, the client
+            // disconnected and the cancellation is left to propagate.
+            throw new MovieException(
+                MovieException.ExceptionTitle,
+                ErrorType.UpstreamServiceUnavailable,
+                $"TMDB did not respond in time with {description}.");
         }
 
         return response ?? throw new MovieException(

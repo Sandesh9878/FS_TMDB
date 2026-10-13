@@ -20,6 +20,10 @@ public class RequestLoggingMiddleware
         {
             await _next(httpContext);
         }
+        catch (OperationCanceledException) when (httpContext.RequestAborted.IsCancellationRequested)
+        {
+            _logger.LogInformation("Request to {Path} was cancelled by the client", httpContext.Request.Path);
+        }
         catch (Exception exception)
         {
             var (statusCode, title, detail) = exception switch
@@ -31,11 +35,11 @@ public class RequestLoggingMiddleware
                 HttpRequestException => (
                     StatusCodes.Status503ServiceUnavailable,
                     "Upstream service unavailable",
-                    exception.Message),
+                    "An upstream service did not respond."),
                 _ => (
                     StatusCodes.Status500InternalServerError,
                     "An unexpected error occurred",
-                    exception.Message),
+                    "The server could not complete the request."),
             };
 
             if (statusCode < StatusCodes.Status500InternalServerError)

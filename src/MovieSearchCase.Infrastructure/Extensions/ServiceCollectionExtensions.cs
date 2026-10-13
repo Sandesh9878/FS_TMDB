@@ -24,6 +24,7 @@ public static class ServiceCollectionExtensions
         services.AddHttpClient<ITmdbClient, TmdbClient>(client =>
         {
             client.BaseAddress = new Uri(tmdbOptions.BaseUrl);
+            client.Timeout = TimeSpan.FromSeconds(10);
             client.DefaultRequestHeaders.Authorization =
                 new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", tmdbOptions.AccessToken);
         });
