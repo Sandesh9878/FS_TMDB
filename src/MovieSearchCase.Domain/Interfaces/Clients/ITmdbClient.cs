@@ -12,6 +12,8 @@ public interface ITmdbClient
     /// </summary>
     Task<IReadOnlyList<Movie>> GetTrendingMoviesAsync(CancellationToken cancellationToken);
 
-    // TODO(candidate): add a method here for TMDB's /search/movie endpoint (query + page)
-    // and implement it on TmdbClient, following the same pattern as GetTrendingMoviesAsync.
+    /// <summary>
+    /// Searches movies by title (TMDB's /search/movie endpoint).
+    /// </summary>
+    Task<PagedResult<Movie>> SearchMoviesAsync(string query, int page, CancellationToken cancellationToken);
 }
