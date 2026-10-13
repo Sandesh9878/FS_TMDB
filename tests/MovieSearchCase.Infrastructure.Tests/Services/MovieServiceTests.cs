@@ -56,4 +56,34 @@ public class MovieServiceTests
 
         result.Should().BeSameAs(expectedPage);
     }
+
+    [Fact]
+    public async Task GetDetailsAsyncShouldReturnMovieFromTmdbClient()
+    {
+        var expectedMovie = new MovieDetails { Id = 268, Title = "Batman", Runtime = 126, Genres = ["Action"] };
+
+        var tmdbClientMock = new Mock<ITmdbClient>();
+        tmdbClientMock
+            .Setup(client => client.GetMovieDetailsAsync(268, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedMovie);
+
+        var result = await new MovieService(tmdbClientMock.Object).GetDetailsAsync(268, CancellationToken.None);
+
+        result.Should().BeSameAs(expectedMovie);
+    }
+
+    [Fact]
+    public async Task GetVideosAsyncShouldReturnVideosFromTmdbClient()
+    {
+        IReadOnlyList<Video> expectedVideos = [new() { Key = "dgC9Q0uhX70", Name = "Official Trailer", Site = "YouTube", Type = "Trailer" }];
+
+        var tmdbClientMock = new Mock<ITmdbClient>();
+        tmdbClientMock
+            .Setup(client => client.GetMovieVideosAsync(268, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedVideos);
+
+        var result = await new MovieService(tmdbClientMock.Object).GetVideosAsync(268, CancellationToken.None);
+
+        result.Should().BeSameAs(expectedVideos);
+    }
 }

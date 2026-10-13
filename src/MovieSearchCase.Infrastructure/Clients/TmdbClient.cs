@@ -43,7 +43,33 @@ public class TmdbClient : ITmdbClient
         };
     }
 
-    private async Task<T> GetAsync<T>(string requestUri, string description, CancellationToken cancellationToken)
+    public async Task<MovieDetails> GetMovieDetailsAsync(int id, CancellationToken cancellationToken)
+    {
+        var response = await GetAsync<TmdbMovieDetails>(
+            $"movie/{id}",
+            "movie details",
+            cancellationToken,
+            notFoundDetail: $"Movie {id} does not exist.");
+
+        return response.ToDomainModel();
+    }
+
+    public async Task<IReadOnlyList<Video>> GetMovieVideosAsync(int id, CancellationToken cancellationToken)
+    {
+        var response = await GetAsync<TmdbVideosResponse>(
+            $"movie/{id}/videos",
+            "movie videos",
+            cancellationToken,
+            notFoundDetail: $"Movie {id} does not exist.");
+
+        return response.Results.Select(TmdbMovieMapper.ToDomainModel).ToList();
+    }
+
+    private async Task<T> GetAsync<T>(
+        string requestUri,
+        string description,
+        CancellationToken cancellationToken,
+        string? notFoundDetail = null)
         where T : class
     {
         T? response;
@@ -51,6 +77,10 @@ public class TmdbClient : ITmdbClient
         try
         {
             response = await _httpClient.GetFromJsonAsync<T>(requestUri, cancellationToken);
+        }
+        catch (HttpRequestException exception) when (notFoundDetail is not null && exception.StatusCode is HttpStatusCode.NotFound)
+        {
+            throw new MovieException(MovieException.ExceptionTitle, ErrorType.EntityNotFound, notFoundDetail);
         }
         catch (HttpRequestException exception) when (exception.StatusCode is HttpStatusCode.Unauthorized)
         {

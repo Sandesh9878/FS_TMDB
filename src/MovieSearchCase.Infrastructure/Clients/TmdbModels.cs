@@ -45,3 +45,42 @@ public class TmdbMovie
     [JsonPropertyName("release_date")]
     public string? ReleaseDate { get; init; }
 }
+
+public class TmdbMovieDetails : TmdbMovie
+{
+    [JsonPropertyName("runtime")]
+    public int? Runtime { get; init; }
+
+    [JsonPropertyName("tagline")]
+    public string? Tagline { get; init; }
+
+    [JsonPropertyName("genres")]
+    public IReadOnlyList<TmdbGenre> Genres { get; init; } = [];
+}
+
+public class TmdbGenre
+{
+    [JsonPropertyName("name")]
+    public required string Name { get; init; }
+}
+
+public class TmdbVideosResponse
+{
+    [JsonPropertyName("results")]
+    public required IReadOnlyList<TmdbVideo> Results { get; init; }
+}
+
+public class TmdbVideo
+{
+    [JsonPropertyName("key")]
+    public required string Key { get; init; }
+
+    [JsonPropertyName("name")]
+    public required string Name { get; init; }
+
+    [JsonPropertyName("site")]
+    public required string Site { get; init; }
+
+    [JsonPropertyName("type")]
+    public required string Type { get; init; }
+}

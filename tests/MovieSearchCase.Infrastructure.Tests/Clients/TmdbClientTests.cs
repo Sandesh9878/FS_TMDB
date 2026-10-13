@@ -170,6 +170,122 @@ public class TmdbClientTests
         result.Should().ContainSingle().Which.Title.Should().Be("Batman");
     }
 
+    [Fact]
+    public async Task GetMovieDetailsAsyncShouldMapDetailsAndNormalizeEmptyValues()
+    {
+        HttpRequestMessage? sentRequest = null;
+        var client = CreateClient((request, _) =>
+        {
+            sentRequest = request;
+            return Task.FromResult(Json("""
+                {
+                  "id": 1000000,
+                  "title": "The Ladies Room",
+                  "vote_average": 0,
+                  "release_date": "2006-10-24",
+                  "runtime": 0,
+                  "tagline": "",
+                  "genres": [{ "id": 99, "name": "Documentary" }, { "id": 18, "name": "Drama" }]
+                }
+                """));
+        });
+
+        var result = await client.GetMovieDetailsAsync(1000000, CancellationToken.None);
+
+        sentRequest!.RequestUri!.PathAndQuery.Should().Be("/3/movie/1000000");
+        result.Id.Should().Be(1000000);
+        result.Title.Should().Be("The Ladies Room");
+        result.ReleaseDate.Should().Be(new DateOnly(2006, 10, 24));
+        result.Runtime.Should().BeNull();
+        result.Tagline.Should().BeNull();
+        result.Genres.Should().Equal("Documentary", "Drama");
+    }
+
+    [Fact]
+    public async Task GetMovieDetailsAsyncShouldKeepRuntimeAndTaglineWhenPresent()
+    {
+        var client = CreateClient((_, _) => Task.FromResult(Json("""
+            { "id": 268, "title": "Batman", "runtime": 126, "tagline": "Have you ever danced with the devil?", "genres": [] }
+            """)));
+
+        var result = await client.GetMovieDetailsAsync(268, CancellationToken.None);
+
+        result.Runtime.Should().Be(126);
+        result.Tagline.Should().Be("Have you ever danced with the devil?");
+        result.Genres.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task GetMovieVideosAsyncShouldMapVideos()
+    {
+        HttpRequestMessage? sentRequest = null;
+        var client = CreateClient((request, _) =>
+        {
+            sentRequest = request;
+            return Task.FromResult(Json("""
+                {
+                  "id": 268,
+                  "results": [
+                    { "key": "dgC9Q0uhX70", "name": "Official Trailer", "site": "YouTube", "type": "Trailer", "size": 1080 }
+                  ]
+                }
+                """));
+        });
+
+        var result = await client.GetMovieVideosAsync(268, CancellationToken.None);
+
+        sentRequest!.RequestUri!.PathAndQuery.Should().Be("/3/movie/268/videos");
+        var video = result.Should().ContainSingle().Subject;
+        video.Key.Should().Be("dgC9Q0uhX70");
+        video.Name.Should().Be("Official Trailer");
+        video.Site.Should().Be("YouTube");
+        video.Type.Should().Be("Trailer");
+    }
+
+    [Fact]
+    public async Task GetMovieVideosAsyncShouldReturnEmptyListWhenMovieHasNoVideos()
+    {
+        var client = CreateClient((_, _) => Task.FromResult(Json("""{ "id": 268, "results": [] }""")));
+
+        var result = await client.GetMovieVideosAsync(268, CancellationToken.None);
+
+        result.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task GetMovieDetailsAsyncShouldThrowNotFoundWhenTmdbReturns404()
+    {
+        var client = CreateClient((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound)));
+
+        var act = () => client.GetMovieDetailsAsync(999999999, CancellationToken.None);
+
+        await act.Should().ThrowAsync<MovieException>()
+            .Where(exception => exception.ErrorCode == ErrorType.EntityNotFound
+                && exception.Message == "Movie 999999999 does not exist.");
+    }
+
+    [Fact]
+    public async Task GetMovieVideosAsyncShouldThrowNotFoundWhenTmdbReturns404()
+    {
+        var client = CreateClient((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound)));
+
+        var act = () => client.GetMovieVideosAsync(999999999, CancellationToken.None);
+
+        await act.Should().ThrowAsync<MovieException>()
+            .Where(exception => exception.ErrorCode == ErrorType.EntityNotFound);
+    }
+
+    [Fact]
+    public async Task GetTrendingMoviesAsyncShouldThrowUpstreamUnavailableWhenTmdbReturns404()
+    {
+        var client = CreateClient((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound)));
+
+        var act = () => client.GetTrendingMoviesAsync(CancellationToken.None);
+
+        await act.Should().ThrowAsync<MovieException>()
+            .Where(exception => exception.ErrorCode == ErrorType.UpstreamServiceUnavailable);
+    }
+
     private static TmdbClient CreateClient(
         Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> send,
         TimeSpan? timeout = null) =>
