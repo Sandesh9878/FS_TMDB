@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using MovieSearchCase.Domain.Entities;
 using MovieSearchCase.Domain.Exceptions;
 using MovieSearchCase.Domain.Interfaces.Clients;
@@ -62,6 +63,13 @@ public class TmdbClient : ITmdbClient
                 MovieException.ExceptionTitle,
                 ErrorType.UpstreamServiceUnavailable,
                 $"TMDB did not return {description}.");
+        }
+        catch (JsonException)
+        {
+            throw new MovieException(
+                MovieException.ExceptionTitle,
+                ErrorType.UpstreamServiceUnavailable,
+                $"TMDB returned an unreadable {description} response.");
         }
         catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
         {

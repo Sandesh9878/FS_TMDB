@@ -8,7 +8,10 @@ using MovieSearchCase.WebApi.Handlers;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Configuration.AddJsonFile("appsettings.Development.local.json", optional: true, reloadOnChange: true);
+builder.Configuration
+    .AddJsonFile("appsettings.Development.local.json", optional: true, reloadOnChange: true)
+    .AddEnvironmentVariables()
+    .AddCommandLine(args);
 
 builder.Services
     .AddControllers().Services

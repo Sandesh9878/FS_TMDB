@@ -33,4 +33,27 @@ public class MovieServiceTests
 
         result.Should().BeEquivalentTo(expectedMovies);
     }
+
+    [Fact]
+    public async Task SearchAsyncShouldReturnPageFromTmdbClient()
+    {
+        var expectedPage = new PagedResult<Movie>
+        {
+            Page = 2,
+            TotalPages = 9,
+            TotalResults = 175,
+            Results = [new() { Id = 268, Title = "Batman", VoteAverage = 7.2 }],
+        };
+
+        var tmdbClientMock = new Mock<ITmdbClient>();
+        tmdbClientMock
+            .Setup(client => client.SearchMoviesAsync("batman", 2, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedPage);
+
+        var movieService = new MovieService(tmdbClientMock.Object);
+
+        var result = await movieService.SearchAsync("batman", 2, CancellationToken.None);
+
+        result.Should().BeSameAs(expectedPage);
+    }
 }

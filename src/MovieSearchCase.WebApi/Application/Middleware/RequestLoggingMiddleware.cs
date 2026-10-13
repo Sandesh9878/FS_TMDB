@@ -59,9 +59,8 @@ public class RequestLoggingMiddleware
                 detail: detail,
                 instance: httpContext.Request.Path);
 
-            httpContext.Response.ContentType = "application/problem+json";
             httpContext.Response.StatusCode = statusCode;
-            await httpContext.Response.WriteAsJsonAsync(problemDetails);
+            await httpContext.Response.WriteAsJsonAsync(problemDetails, options: null, contentType: "application/problem+json");
         }
     }
 }
