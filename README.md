@@ -193,6 +193,9 @@ dotnet run --project src/MovieSearchCase.WebApi
 The API runs at `http://localhost:5080`. Swagger UI is at `/swagger`.
 Use Swagger to check that each endpoint matches the contract.
 
+Implemented endpoints: `/movies/trending`, `/movies/search`, `/movies/{id}` and `/movies/{id}/videos`.
+See [NOTES.md](NOTES.md) for decisions, bugs found in the starter code, and contract questions.
+
 ## Tests
 
 ```bash
